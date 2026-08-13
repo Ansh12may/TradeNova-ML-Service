@@ -1,0 +1,21 @@
+Ticker,cluster,behavioral_type
+ADANIPORTS.NS,0,Higher Sensitivity / Higher Volatility
+AXISBANK.NS,0,Higher Sensitivity / Higher Volatility
+BAJFINANCE.NS,0,Higher Sensitivity / Higher Volatility
+BHARTIARTL.NS,1,Lower Sensitivity / Lower Volatility
+HCLTECH.NS,1,Lower Sensitivity / Lower Volatility
+HDFCBANK.NS,1,Lower Sensitivity / Lower Volatility
+HINDUNILVR.NS,1,Lower Sensitivity / Lower Volatility
+ICICIBANK.NS,1,Lower Sensitivity / Lower Volatility
+INFY.NS,1,Lower Sensitivity / Lower Volatility
+ITC.NS,1,Lower Sensitivity / Lower Volatility
+LT.NS,1,Lower Sensitivity / Lower Volatility
+M&M.NS,0,Higher Sensitivity / Higher Volatility
+MARUTI.NS,1,Lower Sensitivity / Lower Volatility
+RELIANCE.NS,1,Lower Sensitivity / Lower Volatility
+SBIN.NS,0,Higher Sensitivity / Higher Volatility
+SUNPHARMA.NS,1,Lower Sensitivity / Lower Volatility
+TATAPOWER.NS,0,Higher Sensitivity / Higher Volatility
+TCS.NS,1,Lower Sensitivity / Lower Volatility
+TITAN.NS,1,Lower Sensitivity / Lower Volatility
+WIPRO.NS,1,Lower Sensitivity / Lower Volatility

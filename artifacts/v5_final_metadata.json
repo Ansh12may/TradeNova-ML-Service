@@ -1,0 +1,41 @@
+{
+  "model_version": "V5",
+  "model_name": "TradeNova Future Volatility Forecast",
+  "model_type": "LightGBMRegressor",
+  "additional_model_feature": "GARCH volatility forecast",
+  "target": "future_realized_volatility_20d",
+  "horizon_days": 20,
+  "annualization_factor": 252,
+  "test_metrics": {
+    "MAE": 0.0748,
+    "RMSE": 0.0944,
+    "R2": -0.194,
+    "Pearson": 0.3322,
+    "Spearman": 0.3151
+  },
+  "features": [
+    "return_1d",
+    "return_5d",
+    "return_20d",
+    "volatility_20d",
+    "momentum_60d",
+    "price_to_sma20",
+    "price_to_sma50",
+    "drawdown",
+    "volume_change",
+    "volume_zscore",
+    "market_return_1d",
+    "market_return_5d",
+    "market_return_20d",
+    "market_volatility_20d",
+    "market_drawdown",
+    "stock_beta_60d",
+    "relative_volatility",
+    "volatility_ratio",
+    "ATR_14",
+    "ATR_percent",
+    "volatility_change",
+    "volatility_acceleration",
+    "garch_vol_forecast"
+  ]
+}

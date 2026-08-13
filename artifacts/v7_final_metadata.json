@@ -1,0 +1,58 @@
+{
+  "model_version": "V7",
+  "model_name": "TradeNova Behavioral Stock Clustering",
+  "model_type": "KMeans",
+  "n_clusters": 2,
+  "selection_method": {
+    "metric": "Silhouette Score",
+    "selected_k": 2,
+    "silhouette_score": 0.3327
+  },
+  "features": [
+    "return_1d",
+    "return_5d",
+    "return_20d",
+    "volatility_20d",
+    "momentum_60d",
+    "drawdown",
+    "relative_volatility",
+    "volatility_ratio",
+    "ATR_percent",
+    "volatility_change",
+    "volatility_acceleration",
+    "stock_beta_60d"
+  ],
+  "cluster_profiles": {
+    "0": {
+      "label": "Higher Sensitivity / Higher Volatility",
+      "stocks": [
+        "ADANIPORTS.NS",
+        "AXISBANK.NS",
+        "BAJFINANCE.NS",
+        "M&M.NS",
+        "SBIN.NS",
+        "TATAPOWER.NS"
+      ]
+    },
+    "1": {
+      "label": "Lower Sensitivity / Lower Volatility",
+      "stocks": [
+        "BHARTIARTL.NS",
+        "HCLTECH.NS",
+        "HDFCBANK.NS",
+        "HINDUNILVR.NS",
+        "ICICIBANK.NS",
+        "INFY.NS",
+        "ITC.NS",
+        "LT.NS",
+        "MARUTI.NS",
+        "RELIANCE.NS",
+        "SUNPHARMA.NS",
+        "TCS.NS",
+        "TITAN.NS",
+        "WIPRO.NS"
+      ]
+    }
+  },
+  "interpretation_note": "Clusters represent behavioral similarity based on historical market characteristics. They are not investment recommendations and should not be interpreted as inherently safe or risky."
+}

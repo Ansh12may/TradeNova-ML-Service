@@ -1,0 +1,36 @@
+{
+  "model_version": "V6",
+  "model_name": "TradeNova Market Anomaly Detector",
+  "model_type": "IsolationForest",
+  "calibration": "stock_specific",
+  "thresholds": {
+    "elevated": "95th percentile per ticker",
+    "extreme": "99th percentile per ticker"
+  },
+  "features": [
+    "return_1d",
+    "return_5d",
+    "return_20d",
+    "volatility_20d",
+    "volatility_change",
+    "volatility_acceleration",
+    "volume_change",
+    "volume_zscore",
+    "ATR_percent",
+    "drawdown",
+    "relative_volatility",
+    "volatility_ratio",
+    "garch_vol_forecast"
+  ],
+  "test_distribution": {
+    "NORMAL": 96.09,
+    "ELEVATED": 3.7,
+    "EXTREME": 0.22
+  },
+  "interpretation": {
+    "NORMAL": "Behavior is within the stock's historical range.",
+    "ELEVATED": "Behavior is unusually abnormal for this stock.",
+    "EXTREME": "Behavior is highly unusual for this stock."
+  },
+  "important_note": "Anomaly levels are unsupervised risk signals and do not represent ground-truth event classifications."
+}
