@@ -52,3 +52,4 @@ watchfiles==1.2.0
 websockets==17.0.1
 yfinance==1.5.2
 
+torch
