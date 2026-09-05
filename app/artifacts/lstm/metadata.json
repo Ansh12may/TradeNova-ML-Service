@@ -1,0 +1,46 @@
+{
+  "model_type": "LSTMRegressor",
+  "sequence_features": [
+    "past_volatility_20d",
+    "past_volatility_60d",
+    "return_5d",
+    "return_20d",
+    "return_60d",
+    "price_to_sma20",
+    "price_to_sma50",
+    "drawdown_60d",
+    "market_volatility_20d"
+  ],
+  "sequence_length": 120,
+  "hidden_size": 32,
+  "future_horizon": 20,
+  "target": "future_volatility_20d",
+  "target_definition": "std(return[t+1:t+20])",
+  "train_period": [
+    "2019-01-01",
+    "2023-12-31"
+  ],
+  "validation_period": [
+    "2024-01-01",
+    "2024-12-31"
+  ],
+  "test_period": [
+    "2025-01-01",
+    "2026-08-01"
+  ],
+  "seed": 42,
+  "batch_size": 64,
+  "learning_rate": 0.001,
+  "max_epochs": 20,
+  "early_stopping_patience": 4,
+  "validation_metrics": {
+    "mae": 0.004904764238744974,
+    "rmse": 0.006939093969101431,
+    "r2": -0.2683980464935303
+  },
+  "test_metrics": {
+    "mae": 0.004211419261991978,
+    "rmse": 0.005469379990130256,
+    "r2": -0.11646473407745361
+  }
+}

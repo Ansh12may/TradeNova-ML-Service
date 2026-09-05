@@ -84,13 +84,7 @@ def get_batch_risk():
 
     try:
 
-        df = run_batch_risk_analysis()
-
-        stocks = (
-            df.to_dict(
-                orient="records"
-            )
-        )
+        stocks = run_batch_risk_analysis()
 
         return {
             "stocks": stocks,

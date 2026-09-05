@@ -6,10 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from groq import Groq
 
-
-# ============================================================
 # ENVIRONMENT
-# ============================================================
 
 BASE_DIR = Path(
     __file__
@@ -19,19 +16,12 @@ load_dotenv(
     BASE_DIR / ".env"
 )
 
-
-# ============================================================
 # CONFIGURATION
-# ============================================================
-
 DEFAULT_MODEL = (
-    "llama-3.3-70b-versatile"
+    "openai/gpt-oss-20b"
 )
 
-
-# ============================================================
 # SYSTEM PROMPT
-# ============================================================
 
 SYSTEM_PROMPT = SYSTEM_PROMPT = """
 You are the risk explanation assistant for TradeNova.
@@ -135,9 +125,9 @@ The final response should be a natural-language explanation of
 the supplied TradeNova risk result.
 """
 
-# ============================================================
+
 # GROQ CLIENT
-# ============================================================
+
 
 def _get_groq_client() -> Groq:
     """
@@ -163,9 +153,9 @@ def _get_groq_client() -> Groq:
     )
 
 
-# ============================================================
+
 # SINGLE STOCK EXPLANATION
-# ============================================================
+
 
 def generate_risk_explanation(
     ticker: str,
@@ -269,9 +259,9 @@ Interpretation requirements:
     return content.strip()
 
 
-# ============================================================
+
 # BATCH EXPLANATIONS
-# ============================================================
+
 
 def generate_batch_explanations(
     df,
@@ -306,9 +296,9 @@ def generate_batch_explanations(
             explanation = generate_risk_explanation(
                 ticker=ticker,
 
-                # ------------------------------------------------
+               
                 # V5
-                # ------------------------------------------------
+                
                 prediction=float(
                     row["volatility_forecast"]
                 ),
@@ -317,9 +307,8 @@ def generate_batch_explanations(
                     row["volatility_risk"]
                 ),
 
-                # ------------------------------------------------
                 # V6
-                # ------------------------------------------------
+                
                 anomaly_score=float(
                     row["anomaly_score"]
                 ),
@@ -328,16 +317,16 @@ def generate_batch_explanations(
                     row["anomaly_level"]
                 ),
 
-                # ------------------------------------------------
+               
                 # V7
-                # ------------------------------------------------
+             
                 behavioral_type=str(
                     row["behavioral_type"]
                 ),
 
-                # ------------------------------------------------
+                
                 # Risk Engine
-                # ------------------------------------------------
+                
                 risk_score=float(
                     row["risk_score"]
                 ),

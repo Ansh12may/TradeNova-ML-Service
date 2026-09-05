@@ -1,7 +1,7 @@
 from __future__ import annotations
+from typing import Any
 import pandas as pd
 from app.llm.explainer import generate_batch_explanations
-
 
 from app.data.market_data import (
     get_stock_data,
@@ -13,16 +13,23 @@ from app.features.pipeline import (
     select_model_features,
 )
 
+# IMPORTANT:
+# Import the existing V6/V7 model stack BEFORE importing
+# the PyTorch LSTM module. This avoids the native-library
+# import-order issue observed on macOS.
 from app.model_loader import (
-    v5_model,
     v6_model,
     v6_scaler,
     v7_model,
     v7_scaler,
-    v5_features,
     v6_features,
+    v7_features,
     v6_stock_thresholds,
     v7_cluster_mapping,
+)
+
+from app.lstm_inference import (
+    predict_future_volatility,
 )
 
 from app.risk.risk_engine import (
@@ -31,19 +38,12 @@ from app.risk.risk_engine import (
     classify_risk,
 )
 
-
-# ============================================================
 # CONFIGURATION
-# ============================================================
 
 TRAIN_CUTOFF_DATE = pd.Timestamp(
     "2026-01-01"
 )
 
-
-# ============================================================
-# TRADE NOVA STOCK UNIVERSE
-# ============================================================
 
 STOCKS = [
     "RELIANCE.NS",
@@ -58,7 +58,6 @@ STOCKS = [
     "WIPRO.NS",
     "TATAPOWER.NS",
     "M&M.NS",
-    "HCLTECH.NS",
     "AXISBANK.NS",
     "LT.NS",
     "MARUTI.NS",
@@ -66,12 +65,10 @@ STOCKS = [
     "TITAN.NS",
     "BAJFINANCE.NS",
     "ADANIPORTS.NS",
+    "HCLTECH.NS",
 ]
 
-
-# ============================================================
 # V7 BASE FEATURES
-# ============================================================
 
 V7_BASE_FEATURES = [
     "return_1d",
@@ -88,10 +85,7 @@ V7_BASE_FEATURES = [
     "stock_beta_60d",
 ]
 
-
-# ============================================================
 # V7 PROFILE
-# ============================================================
 
 def build_v7_profile(
     df: pd.DataFrame,
@@ -152,9 +146,9 @@ def build_v7_profile(
     ]
 
 
-# ============================================================
+
 # V7 BEHAVIOR
-# ============================================================
+
 
 def get_v7_behavior(
     ticker: str,
@@ -198,9 +192,9 @@ def get_v7_behavior(
     )
 
 
-# ============================================================
+
 # V6 ANOMALY
-# ============================================================
+
 
 def get_v6_anomaly(
     ticker: str,
@@ -277,22 +271,30 @@ def get_v6_anomaly(
     )
 
 
-# ============================================================
+
 # SINGLE STOCK ML INFERENCE
-# ============================================================
+
 
 def infer_stock(
     ticker: str,
     nifty_df: pd.DataFrame,
-):
+) -> dict[str, Any]:
     """
-    Run V5, V6 and V7 inference for one stock.
+    Run the complete ML inference pipeline
+    for one stock.
 
-    This function produces deterministic ML
-    outputs only.
+    Models:
+        LSTM -> future volatility
+        V6   -> anomaly detection
+        V7   -> behavioral profile
 
-    It does NOT calculate the final risk score.
+    This function does NOT calculate the
+    final risk score.
     """
+
+ 
+    # STOCK DATA
+
 
     stock_df = get_stock_data(
         ticker
@@ -304,9 +306,9 @@ def infer_stock(
             f"No data returned for {ticker}"
         )
 
-    # ========================================================
+
     # TRAINING CUTOFF
-    # ========================================================
+ 
 
     train_cutoff_idx = int(
         (
@@ -315,9 +317,12 @@ def infer_stock(
         ).sum()
     )
 
-    # ========================================================
-    # FEATURE ENGINEERING
-    # ========================================================
+
+    # EXISTING V6/V7 FEATURE PIPELINE
+    #
+    # IMPORTANT:
+    # Keep the original pipeline contract.
+  
 
     features_df = build_features_for_stock(
         stock_df=stock_df,
@@ -327,14 +332,33 @@ def infer_stock(
 
     # ========================================================
     # REQUIRED FEATURES
+    #
+    # We retain the original V5 + V6 feature contract
+    # because the existing feature pipeline was built around
+    # these artifacts.
+    #
+    # V5 is no longer used for prediction.
+    # LSTM has its own feature pipeline.
     # ========================================================
 
     required_features = sorted(
         set(
-            v5_features
-            + v6_features
+            list(
+                v6_features
+            )
+            + list(
+                v7_features
+            )
+            + V7_BASE_FEATURES
         )
     )
+
+    # Only require features that are actually present.
+    required_features = [
+        feature
+        for feature in required_features
+        if feature in features_df.columns
+    ]
 
     clean_df = features_df.dropna(
         subset=required_features
@@ -348,28 +372,20 @@ def infer_stock(
 
     latest = clean_df.iloc[-1]
 
-    # ========================================================
-    # V5 — VOLATILITY FORECAST
-    # ========================================================
 
-    X_v5 = select_model_features(
-        clean_df,
-        v5_features,
+    # LSTM — FUTURE 20-DAY VOLATILITY
+
+
+    (
+        lstm_prediction,
+        lstm_prediction_date,
+    ) = predict_future_volatility(
+        ticker=ticker,
     )
 
-    latest_X_v5 = X_v5.iloc[
-        [-1]
-    ]
-
-    v5_prediction = float(
-        v5_model.predict(
-            latest_X_v5
-        )[0]
-    )
-
-    # ========================================================
+   
     # V6 — ANOMALY DETECTION
-    # ========================================================
+ 
 
     (
         anomaly_prediction,
@@ -380,9 +396,9 @@ def infer_stock(
         clean_df=clean_df,
     )
 
-    # ========================================================
+    
     # V7 — BEHAVIORAL PROFILE
-    # ========================================================
+   
 
     (
         cluster,
@@ -392,28 +408,26 @@ def infer_stock(
         clean_df=clean_df,
     )
 
-    # ========================================================
-    # RETURN STANDARDIZED ML OUTPUT
-    # ========================================================
+   
+    # STANDARDIZED ML OUTPUT
+   
 
     return {
         "Ticker": ticker,
 
-        "Date": latest[
-            "Date"
-        ],
+        "Date": lstm_prediction_date,
 
-        # ------------------------
-        # V5
-        # ------------------------
+        
+        # LSTM
+    
 
-        "volatility_forecast": (
-            v5_prediction
+        "volatility_forecast": float(
+            lstm_prediction
         ),
 
-        # ------------------------
+      
         # V6
-        # ------------------------
+      
 
         "anomaly_prediction": (
             anomaly_prediction
@@ -427,9 +441,9 @@ def infer_stock(
             anomaly_level
         ),
 
-        # ------------------------
+        
         # V7
-        # ------------------------
+        
 
         "behavioral_cluster": (
             cluster
@@ -441,53 +455,33 @@ def infer_stock(
     }
 
 
-# ============================================================
+
 # BATCH RISK ANALYSIS
-# ============================================================
 
-def run_batch_risk_analysis():
+
+def run_batch_risk_analysis() -> list[dict[str, Any]]:
     """
-    Run the complete deterministic risk pipeline
-    for the TradeNova stock universe.
-
-    Pipeline:
-
-        NIFTY
-          ↓
-        V5
-        V6
-        V7
-          ↓
-        Cross-sectional V5 risk
-          ↓
-        Final deterministic risk score
-          ↓
-        Risk classification
-
-    Returns
-    -------
-    pd.DataFrame
-        Final risk snapshot for all successfully
-        processed stocks.
+    Run the complete TradeNova ML + risk
+    pipeline for all supported stocks.
     """
 
-    # ========================================================
-    # LOAD MARKET INDEX ONCE
-    # ========================================================
+
+    # LOAD NIFTY ONCE
+  
 
     nifty_df = get_nifty_data()
 
     if nifty_df.empty:
 
-        raise RuntimeError(
-            "Unable to load NIFTY market data."
+        raise ValueError(
+            "No NIFTY market data available."
         )
 
-    # ========================================================
-    # RUN ML INFERENCE
-    # ========================================================
-
     results = []
+
+    
+    # PROCESS STOCKS
+    
 
     for ticker in STOCKS:
 
@@ -505,116 +499,108 @@ def run_batch_risk_analysis():
         except Exception as exc:
 
             print(
-                f"ERROR processing "
-                f"{ticker}: {exc}"
+                f"Error processing {ticker}: {exc}"
             )
 
-    # ========================================================
-    # VALIDATION
-    # ========================================================
-
+    # VALIDATE RESULTS
     if not results:
 
-        raise RuntimeError(
-            "No stocks were successfully processed."
+        raise ValueError(
+            "Unable to generate risk analysis "
+            "for any stock."
         )
+
+    # DATAFRAME
+
 
     df = pd.DataFrame(
         results
     )
 
     # ========================================================
-    # V5 CROSS-SECTIONAL RISK
+    # VOLATILITY RISK
+    #
+    # LSTM produces continuous volatility.
+    #
+    # Risk engine converts the predictions into
+    # cross-sectional percentile risk.
     # ========================================================
 
-    df[
-        "volatility_risk"
-    ] = calculate_volatility_risk(
-        df[
-            "volatility_forecast"
-        ]
+    df["volatility_risk"] = (
+        calculate_volatility_risk(
+            df[
+                "volatility_forecast"
+            ]
+        )
     )
 
-    # ========================================================
-    # FINAL DETERMINISTIC RISK SCORE
-    # ========================================================
-
-    df[
-        "risk_score"
-    ] = df.apply(
+    # FINAL RISK SCORE
+    df["risk_score"] = df.apply(
         lambda row: calculate_risk_score(
-            volatility_risk=row[
-                "volatility_risk"
-            ],
-
-            anomaly_level=row[
-                "anomaly_level"
-            ],
-
-            cluster=row[
-                "behavioral_cluster"
-            ],
+            volatility_risk=float(
+                row[
+                    "volatility_risk"
+                ]
+            ),
+            anomaly_level=str(
+                row[
+                    "anomaly_level"
+                ]
+            ),
+            cluster=int(
+                row[
+                    "behavioral_cluster"
+                ]
+            ),
         ),
         axis=1,
     )
 
-    # ========================================================
-    # RISK CLASSIFICATION
-    # ========================================================
 
-    df[
-        "risk_level"
-    ] = df[
-        "risk_score"
-    ].apply(
-        classify_risk
+    # RISK CLASSIFICATION
+
+
+    df["risk_level"] = (
+        df[
+            "risk_score"
+        ].apply(
+            classify_risk
+        )
     )
 
-    # ========================================================
-    # SORT BY RISK
-    # ========================================================
+
+    # SORT
+   
 
     df = df.sort_values(
         "risk_score",
         ascending=False,
-    ).reset_index(
-        drop=True
     )
 
-    return df
+
+    # JSON-SAFE OUTPUT
 
 
-# ============================================================
+    return df.to_dict(
+        orient="records"
+    )
+
+
 # SINGLE STOCK RISK
-# ============================================================
+
 
 def get_risk_for_stock(
     ticker: str,
-):
+) -> dict[str, Any]:
     """
-    Get the deterministic risk result for one stock.
+    Return the complete risk result for
+    one supported stock.
 
-    IMPORTANT:
-    V5 volatility risk is cross-sectional.
-
-    Therefore we must first calculate the risk
-    for the complete TradeNova universe and then
-    select the requested ticker.
-
-    This guarantees that:
-
-        /risk/TCS.NS
-
-    uses the same risk calculation as:
-
-        /risk/batch
+    The complete universe is evaluated because
+    volatility risk is cross-sectional.
     """
 
-    ticker = ticker.upper()
-
-    # ========================================================
-    # VALIDATE TICKER
-    # ========================================================
+    ticker = ticker.upper().strip()
 
     if ticker not in STOCKS:
 
@@ -622,41 +608,26 @@ def get_risk_for_stock(
             f"Unsupported ticker: {ticker}"
         )
 
-    # ========================================================
-    # RUN COMPLETE UNIVERSE
-    # ========================================================
+    all_results = (
+        run_batch_risk_analysis()
+    )
 
-    df = run_batch_risk_analysis()
+    for result in all_results:
 
-    # ========================================================
-    # FIND REQUESTED STOCK
-    # ========================================================
+        if result["Ticker"] == ticker:
 
-    result = df[
-        df["Ticker"] == ticker
-    ]
+            return result
 
-    if result.empty:
-
-        raise ValueError(
-            f"No risk result found for {ticker}"
-        )
-
-    # ========================================================
-    # RETURN SINGLE STOCK
-    # ========================================================
-
-    return result.iloc[
-        0
-    ].to_dict()
+    raise ValueError(
+        f"Risk result not available for {ticker}"
+    )
 
 
-
-
+# RISK EXPLANATION
 
 def get_risk_explanation(
     ticker: str,
-):
+) -> dict[str, Any]:
     """
     Generate an LLM explanation for a single stock.
 
